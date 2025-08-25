@@ -33,6 +33,30 @@ A aplicação é uma Single Page Application (SPA) construída com React e TypeS
     ```
 5.  Acesse a aplicação em `http://localhost:8888`.
 
+## Configuração do Netlify (`netlify.toml`)
+
+Para que o ambiente de desenvolvimento local (`netlify dev`) e o deploy funcionem corretamente, é crucial ter um arquivo `netlify.toml` na raiz do projeto. Este arquivo instrui a Netlify sobre como construir o site e como rotear os pedidos.
+
+O arquivo `netlify.toml` já foi criado para você com o seguinte conteúdo:
+
+```toml
+# Configurações de build
+[build]
+  command = "npm run build"      # Comando para buildar o projeto
+  publish = "dist"               # Diretório de publicação (saída do Vite)
+  functions = "netlify/functions"  # Diretório onde as funções serverless estão
+
+# Regra de reescrita para a API
+# Isso faz com que as chamadas para /api/* no frontend sejam direcionadas
+# para a função 'api.ts' no backend, tanto no desenvolvimento local quanto em produção.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+```
+- A seção `[build]` define os comandos e diretórios para o processo de build.
+- A regra `[[redirects]]` é a chave para a comunicação frontend-backend, criando um proxy para a sua API serverless.
+
 ## Limpeza da Arquitetura
 
 Como parte da evolução do projeto, foi realizada uma refatoração significativa para mover a lógica de negócio do frontend para o backend, resultando em uma arquitetura mais limpa, segura e escalável.
