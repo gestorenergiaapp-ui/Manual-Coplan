@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useContent } from '../hooks/useContent';
@@ -10,28 +9,26 @@ const AdminPage: React.FC = () => {
     const { currentUser, changePassword, getUsers, addUser, deleteUser } = useAuth();
     const { suggestions, logoUrl, updateLogo } = useContent();
     
-    // State for logo upload
-    const [logoPreview, setLogoPreview] = useState<string | null>(logoUrl);
     const [logoMessage, setLogoMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-    // State for password change
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-    // State for user management
     const [allUsers, setAllUsers] = useState<StoredUser[]>([]);
     const [newUsername, setNewUsername] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
     const [userMessage, setUserMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
+    const fetchUsers = async () => {
+        const users = await getUsers();
+        // The API returns users without passwords, so we cast it.
+        setAllUsers(users as StoredUser[]);
+    };
+
     useEffect(() => {
-        const fetchUsers = async () => {
-            const users = await getUsers();
-            setAllUsers(users);
-        };
         fetchUsers();
     }, [getUsers]);
 
@@ -43,21 +40,17 @@ const AdminPage: React.FC = () => {
     const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setLogoMessage(null);
             if (file.size > 2 * 1024 * 1024) { // 2MB limit
                 setLogoMessage({type: 'error', text: 'O arquivo é muito grande. O limite é 2MB.'});
                 return;
             }
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const result = reader.result as string;
-                setLogoPreview(result);
-                await updateLogo(result);
+            try {
+                await updateLogo(file);
                 setLogoMessage({type: 'success', text: 'Logo atualizado com sucesso!'});
-            };
-            reader.onerror = () => {
-                setLogoMessage({type: 'error', text: 'Falha ao ler o arquivo.'});
+            } catch (error) {
+                 setLogoMessage({type: 'error', text: 'Falha ao enviar o logo.'});
             }
-            reader.readAsDataURL(file);
         }
     };
 
@@ -95,16 +88,13 @@ const AdminPage: React.FC = () => {
         if (result.success) {
             setNewUsername('');
             setNewUserPassword('');
-            // Refresh user list
-            const users = await getUsers();
-            setAllUsers(users);
+            fetchUsers();
         }
     }
 
     const handleDeleteUser = async (username: string) => {
         await deleteUser(username);
-        const users = await getUsers();
-        setAllUsers(users);
+        fetchUsers();
     }
 
 
@@ -185,8 +175,8 @@ const AdminPage: React.FC = () => {
                         )}
                     </div>
                     <div className="bg-brand-primary p-4 rounded-md flex items-center justify-center">
-                        {logoPreview ? (
-                            <img src={logoPreview} alt="Prévia do Logo" className="max-h-20" />
+                        {logoUrl ? (
+                            <img src={logoUrl} alt="Prévia do Logo" className="max-h-20" />
                         ): (
                             <p className="text-gray-400">Prévia do Logo</p>
                         )}

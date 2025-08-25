@@ -3,21 +3,15 @@ import { useAuth } from '../hooks/useAuth';
 import { ContentBlock, ContentType } from '../types';
 import { PencilIcon, CheckIcon, XMarkIcon, ArrowUpIcon, ArrowDownIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import { marked } from 'marked';
-import { Link } from 'react-router-dom';
+import * as api from '../services/api';
 
 // Custom renderer for links to use React Router's Link component
 class CustomRenderer extends marked.Renderer {
-  override link({ href, title, text }: marked.Tokens.Link): string | false {
-    // In modern 'marked', the 'href' in a link token is typed as a string.
-    // If for some reason it's not a valid link, we can return false
-    // to let marked use its default rendering.
-    if (!href) {
-      return false;
-    }
+  link({ href, title, text }: marked.Tokens.Link): string | false {
+    if (!href) return false;
 
     // Check for internal links (start with /)
     if (href.startsWith('/')) {
-      // Use hash-based routing for SPA navigation
       return `<a href="#${href}" title="${title || ''}" class="text-brand-secondary hover:underline font-semibold">${text}</a>`;
     }
   
@@ -45,6 +39,7 @@ const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ block, onUp
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [editValue, setEditValue] = useState(block.content);
 
   useEffect(() => {
@@ -61,14 +56,19 @@ const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ block, onUp
     setIsEditing(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditValue(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      try {
+        const { url } = await api.uploadImage(file);
+        setEditValue(url); // This will be the API url e.g., /api/media/someid
+      } catch (error) {
+        console.error("Image upload failed", error);
+        alert("Falha ao carregar imagem.");
+      } finally {
+        setIsUploading(false);
+      }
     }
   }
 
@@ -98,10 +98,10 @@ const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ block, onUp
   const renderImageEditable = () => (
     <div className="w-full p-4 border-2 border-dashed rounded-lg text-center">
       {editValue && typeof editValue === 'string' && <img src={editValue} alt="Preview" className="max-h-40 mx-auto mb-4" />}
-      <label className="cursor-pointer bg-brand-secondary text-white px-4 py-2 rounded-lg hover:bg-brand-primary">
+      <label className={`cursor-pointer bg-brand-secondary text-white px-4 py-2 rounded-lg hover:bg-brand-primary ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
           <PhotoIcon className="h-5 w-5 mr-2 inline-block" />
-          <span>Escolher Imagem</span>
-          <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+          <span>{isUploading ? 'Enviando...' : 'Escolher Imagem'}</span>
+          <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={isUploading} />
       </label>
     </div>
   );

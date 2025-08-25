@@ -1,12 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import * as api from '../services/api';
+import { useContent } from '../hooks/useContent';
 import { SearchResult } from '../types';
 import { DocumentTextIcon, QuestionMarkCircleIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 
 const SearchPage: React.FC = () => {
     const [searchParams] = useSearchParams();
+    const { pages, faqs } = useContent();
     const query = searchParams.get('q') || '';
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
@@ -18,13 +19,14 @@ const SearchPage: React.FC = () => {
                 return;
             }
             setLoading(true);
-            const searchResults = await api.searchContent(query);
+            // Search is performed on the client-side using the available content
+            const searchResults = await api.searchContent(pages, faqs, query);
             setResults(searchResults);
             setLoading(false);
         };
 
         performSearch();
-    }, [query]);
+    }, [query, pages, faqs]);
 
     const getResultUrl = (result: SearchResult) => {
         if (result.type === 'FAQ') {
@@ -64,7 +66,7 @@ const SearchPage: React.FC = () => {
                                    }
                                </div>
                                <div>
-                                   <div className="flex items-center text-sm text-gray-500 mb-1">
+                                   <div className="flex items-center text-sm text-gray-500 mb-1 flex-wrap">
                                        {result.pathTitles.map((title, i) => (
                                            <React.Fragment key={i}>
                                                 <span>{title}</span>

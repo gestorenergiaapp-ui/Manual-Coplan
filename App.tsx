@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ContentProvider } from './context/ContentContext';
@@ -12,10 +11,6 @@ import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import SearchPage from './pages/SearchPage';
-import * as api from './services/api';
-
-// Initialize the database on app startup
-api.initializeDatabase();
 
 const App: React.FC = () => {
   return (

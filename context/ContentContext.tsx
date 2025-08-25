@@ -8,7 +8,7 @@ interface ContentContextType {
   suggestions: Suggestion[];
   logoUrl: string | null;
   loading: boolean;
-  updateLogo: (url: string | null) => Promise<void>;
+  updateLogo: (file: File) => Promise<void>;
   updatePageContent: (path: string[], newContent: ContentBlock[]) => Promise<void>;
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'timestamp'>) => void;
   updateFaq: (faqId: string, question: string, answer: string) => Promise<void>;
@@ -33,14 +33,10 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     const fetchData = async () => {
       try {
-          const [pagesData, faqsData, logoData] = await Promise.all([
-              api.getPages(),
-              api.getFaqs(),
-              api.getLogo()
-          ]);
-          setPages(pagesData);
-          setFaqs(faqsData);
-          setLogoUrl(logoData);
+          const contentData = await api.getContent();
+          setPages(contentData.pages);
+          setFaqs(contentData.faqs);
+          setLogoUrl(contentData.logoUrl);
       } catch (error) {
           console.error("Failed to fetch initial content data:", error);
       } finally {
@@ -50,66 +46,68 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     fetchData();
   }, []);
 
-  const updateLogo = useCallback(async (url: string | null) => {
-    await api.updateLogo(url);
+  const updatePagesState = useCallback(async (updateFn: () => Promise<Page[]>) => {
+      const updatedPages = await updateFn();
+      setPages(updatedPages);
+  }, []);
+  
+  const updateFaqsState = useCallback(async (updateFn: () => Promise<FaqItem[]>) => {
+      const updatedFaqs = await updateFn();
+      setFaqs(updatedFaqs);
+  }, []);
+
+  const updateLogo = useCallback(async (file: File) => {
+    const { url } = await api.uploadLogo(file);
     setLogoUrl(url);
   }, []);
 
-  const updatePageContent = useCallback(async (path: string[], newContent: ContentBlock[]) => {
-    const updatedPages = await api.updatePageContent(path, newContent);
-    setPages(updatedPages);
-  }, []);
+  const updatePageContent = useCallback((path: string[], newContent: ContentBlock[]) => {
+    return updatePagesState(() => api.updatePageContent(path, newContent));
+  }, [updatePagesState]);
 
-  const updateFaq = useCallback(async (faqId: string, question: string, answer: string) => {
-    const updatedFaqs = await api.updateFaq(faqId, { question, answer });
-    setFaqs(updatedFaqs);
-  }, []);
+  const addPage = useCallback((parentPath: string[] | null, title: string, icon: string) => {
+    return updatePagesState(() => api.addPage(parentPath, title, icon));
+  }, [updatePagesState]);
+
+  const updatePageDetails = useCallback((path: string[], newTitle: string, newIcon: string) => {
+    return updatePagesState(() => api.updatePageDetails(path, newTitle, newIcon));
+  }, [updatePagesState]);
+
+  const deletePage = useCallback((path: string[]) => {
+    return updatePagesState(() => api.deletePage(path));
+  }, [updatePagesState]);
+
+  const addContentBlock = useCallback((path: string[], blockType: ContentType) => {
+    return updatePagesState(() => api.addContentBlock(path, blockType));
+  }, [updatePagesState]);
+
+  const moveContentBlock = useCallback((path: string[], blockId: string, direction: 'up' | 'down') => {
+    return updatePagesState(() => api.moveContentBlock(path, blockId, direction));
+  }, [updatePagesState]);
+
+  const updateFaq = useCallback((faqId: string, question: string, answer: string) => {
+    return updateFaqsState(() => api.updateFaq(faqId, { question, answer }));
+  }, [updateFaqsState]);
+
+  const addFaq = useCallback((faq: Omit<FaqItem, 'id'>) => {
+    return updateFaqsState(() => api.addFaq(faq));
+  }, [updateFaqsState]);
+
+  const deleteFaq = useCallback((faqId: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta pergunta?')) {
+        return updateFaqsState(() => api.deleteFaq(faqId));
+    }
+    return Promise.resolve();
+  }, [updateFaqsState]);
 
   const addSuggestion = useCallback((suggestion: Omit<Suggestion, 'id' | 'timestamp'>) => {
-    // Suggestions remain session-based
+    // This can remain a frontend-only state for now, as it's not persisted.
     const newSuggestion: Suggestion = {
       ...suggestion,
       id: `sug_${new Date().getTime()}`,
       timestamp: new Date().toISOString(),
     };
     setSuggestions(prev => [newSuggestion, ...prev]);
-  }, []);
-
-  const addPage = useCallback(async (parentPath: string[] | null, title: string, icon: string) => {
-    const updatedPages = await api.addPage(parentPath, title, icon);
-    setPages(updatedPages);
-  }, []);
-  
-  const updatePageDetails = useCallback(async (path: string[], newTitle: string, newIcon: string) => {
-    const updatedPages = await api.updatePageDetails(path, newTitle, newIcon);
-    setPages(updatedPages);
-  }, []);
-
-  const deletePage = useCallback(async (path: string[]) => {
-      const updatedPages = await api.deletePage(path);
-      setPages(updatedPages);
-  }, []);
-
-  const addContentBlock = useCallback(async (path: string[], blockType: ContentType) => {
-      const updatedPages = await api.addContentBlock(path, blockType);
-      setPages(updatedPages);
-  }, []);
-
-  const moveContentBlock = useCallback(async (path: string[], blockId: string, direction: 'up' | 'down') => {
-      const updatedPages = await api.moveContentBlock(path, blockId, direction);
-      setPages(updatedPages);
-  }, []);
-
-  const addFaq = useCallback(async (faq: Omit<FaqItem, 'id'>) => {
-    const updatedFaqs = await api.addFaq(faq);
-    setFaqs(updatedFaqs);
-  }, []);
-
-  const deleteFaq = useCallback(async (faqId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta pergunta?')) {
-        const updatedFaqs = await api.deleteFaq(faqId);
-        setFaqs(updatedFaqs);
-    }
   }, []);
 
 

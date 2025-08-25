@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { User, StoredUser } from '../types';
 import * as api from '../services/api';
@@ -28,7 +27,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const user = await api.getCurrentUser();
             setCurrentUser(user);
         } catch (error) {
-            console.error("No user session found.", error);
+            console.log("No active session found.");
+            setCurrentUser(null)
         } finally {
             setLoading(false);
         }
@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const changePassword = useCallback(async (oldPass: string, newPass: string) => {
     if (!currentUser) return false;
-    return api.changePassword(currentUser.username, oldPass, newPass);
+    return api.changePassword(oldPass, newPass);
   }, [currentUser]);
 
   const addUser = useCallback(async (user: Pick<StoredUser, 'username' | 'password'>): Promise<{ success: boolean, message: string }> => {
