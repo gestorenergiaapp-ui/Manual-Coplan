@@ -20,18 +20,21 @@ A aplicação é uma Single Page Application (SPA) construída com React e TypeS
     npm install
     ```
 3.  **Configure as variáveis de ambiente:**
-    Crie um arquivo `.env` na raiz do projeto, baseado no `.env.example`. Preencha com suas credenciais do MongoDB e um segredo para o JWT.
+    Crie um arquivo `.env` na raiz do projeto. Você precisará de duas variáveis:
+    -   `MONGODB_URI`: Sua string de conexão completa do MongoDB Atlas, incluindo o nome do banco de dados. Ex: `mongodb+srv://user:pass@cluster.mongodb.net/meuBancoDeDados?retryWrites=true&w=majority`
+    -   `JWT_SECRET`: Uma string longa e aleatória para assinar os tokens de autenticação. Você pode gerar uma usando `openssl rand -base64 32`.
+
+    **Exemplo de `.env`:**
     ```
-    MONGODB_URI="sua_string_de_conexao_mongodb"
-    DB_NAME="nome_do_seu_banco_de_dados"
-    JWT_SECRET="seu_segredo_super_secreto_para_jwt"
+    MONGODB_URI="sua_string_de_conexao_com_nome_do_banco"
+    JWT_SECRET="seu_segredo_super_secreto_gerado_aleatoriamente"
     ```
 4.  **Inicie o ambiente de desenvolvimento:**
     A CLI da Netlify irá iniciar o servidor Vite para o frontend e o servidor de funções para o backend simultaneamente.
     ```bash
     netlify dev
     ```
-5.  Acesse a aplicação em `http://localhost:8888`.
+5.  Acesse a aplicação em `http://localhost:8888`. O usuário administrador padrão é `admin` com a senha `admin123`.
 
 ## Configuração do Netlify (`netlify.toml`)
 

@@ -6,10 +6,10 @@ import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { Page, FaqItem, StoredUser, ContentBlock, ContentType } from "../../types";
 
-const { MONGODB_URI, DB_NAME, JWT_SECRET } = process.env;
+const { MONGODB_URI, JWT_SECRET } = process.env;
 
-if (!MONGODB_URI || !DB_NAME || !JWT_SECRET) {
-  throw new Error("Missing environment variables");
+if (!MONGODB_URI || !JWT_SECRET) {
+  throw new Error("Missing environment variables: MONGODB_URI and JWT_SECRET are required.");
 }
 
 let client: MongoClient | null = null;
@@ -23,7 +23,8 @@ async function connectToDatabase() {
     client = new MongoClient(MONGODB_URI);
     await client.connect();
   }
-  const db = client.db(DB_NAME);
+  // The database name is taken from the MONGODB_URI
+  const db = client.db();
   cachedDb = db;
   return db;
 }
@@ -124,7 +125,7 @@ const handler: Handler = async (event, context) => {
             const token = jwt.sign(userToSign, JWT_SECRET!, { expiresIn: '1d' });
             
             return createResponse(200, userToSign, {
-                'Set-Cookie': cookie.serialize('auth_token', token, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: 86400 })
+                'Set-Cookie': cookie.serialize('auth_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: 86400 })
             });
         }
 
