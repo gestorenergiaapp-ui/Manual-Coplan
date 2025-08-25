@@ -1,0 +1,17 @@
+```toml
+# Configurações de build
+[build]
+  command = "npm run build"      # Comando para buildar o projeto
+  publish = "dist"               # Diretório de publicação (saída do Vite)
+  functions = "netlify/functions"  # Diretório onde as funções serverless estão
+
+# Regra de reescrita para a API
+# Isso faz com que as chamadas para /api/* no frontend sejam direcionadas
+# para a função 'api.ts' no backend, tanto no desenvolvimento local quanto em produção.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+```
+- A seção `[build]` define os comandos e diretórios para o processo de build.
+- A regra `[[redirects]]` é a chave para a comunicação frontend-backend, criando um proxy para a sua API serverless.
