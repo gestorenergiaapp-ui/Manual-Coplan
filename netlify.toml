@@ -1,4 +1,4 @@
-```toml
+
 # Configurações de build
 [build]
   command = "npm run build"      # Comando para buildar o projeto
@@ -18,4 +18,5 @@
   from = "/*"
   to = "/index.html"
   status = 200
-```
+
+
