@@ -29,18 +29,21 @@ A aplicação é uma Single Page Application (SPA) construída com React e TypeS
     MONGODB_URI="sua_string_de_conexao_com_nome_do_banco"
     JWT_SECRET="seu_segredo_super_secreto_gerado_aleatoriamente"
     ```
-4.  **Inicie o ambiente de desenvolvimento:**
+4.  **Crie o arquivo de configuração `netlify.toml`:**
+    Crie um arquivo chamado `netlify.toml` na raiz do projeto e cole o conteúdo da seção abaixo nele. Este passo é **essencial** para que a aplicação funcione localmente.
+
+5.  **Inicie o ambiente de desenvolvimento:**
     A CLI da Netlify irá iniciar o servidor Vite para o frontend e o servidor de funções para o backend simultaneamente.
     ```bash
     netlify dev
     ```
-5.  Acesse a aplicação em `http://localhost:8888`. O usuário administrador padrão é `admin` com a senha `admin123`.
+6.  Acesse a aplicação em `http://localhost:8888`. O usuário administrador padrão é `admin` com a senha `admin123`.
 
 ## Configuração do Netlify (`netlify.toml`)
 
-Para que o ambiente de desenvolvimento local (`netlify dev`) e o deploy funcionem corretamente, é crucial ter um arquivo `netlify.toml` na raiz do projeto. Este arquivo instrui a Netlify sobre como construir o site e como rotear os pedidos.
+Para que o ambiente de desenvolvimento local (`netlify dev`) e o deploy funcionem corretamente, é crucial ter um arquivo `netlify.toml` na raiz do projeto. Este arquivo instrui a Netlify sobre como construir o site e, mais importante, como rotear os pedidos.
 
-O conteúdo essencial do `netlify.toml` é:
+**Copie e cole o conteúdo abaixo no seu arquivo `netlify.toml`:**
 
 ```toml
 # Configurações de build
@@ -50,14 +53,14 @@ O conteúdo essencial do `netlify.toml` é:
   functions = "netlify/functions"  # Diretório onde as funções serverless estão
 
 # Regra de proxy para a API (deve vir primeiro)
-# Direciona chamadas /api/* para a função serverless.
+# Direciona chamadas /api/* para a função serverless, corrigindo erros de comunicação.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
 
 # Regra de fallback para Single Page Application (SPA)
-# Garante que o roteamento do React funcione ao recarregar a página.
+# Garante que o roteamento do React funcione ao recarregar a página, corrigindo a "tela branca".
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -65,7 +68,7 @@ O conteúdo essencial do `netlify.toml` é:
 ```
 - A seção `[build]` define os comandos e diretórios para o processo de build.
 - A primeira regra `[[redirects]]` cria um proxy para a sua API serverless.
-- A segunda regra `[[redirects]]` é o "fallback" que resolve problemas de roteamento em SPAs, garantindo que o `index.html` seja servido para qualquer rota, permitindo que o React Router funcione corretamente.
+- A segunda regra `[[redirects]]` é o "fallback" que resolve o problema da "tela branca" e garante que o React Router funcione corretamente.
 
 ## Limpeza da Arquitetura
 
@@ -73,11 +76,11 @@ Como parte da evolução do projeto, foi realizada uma refatoração significati
 
 Os seguintes arquivos se tornaram obsoletos e foram esvaziados, podendo ser removidos do projeto com segurança:
 
--   `data/content.tsx`: O conteúdo inicial agora é semeado diretamente no banco de dados.
--   `data/users.ts`: Os dados de usuários agora são gerenciados no banco de dados.
--   `context/AdminContext.tsx`: Não utilizado.
--   `hooks/useAdmin.ts`: Não utilizado.
--   `components/LoginModal.tsx`: Não utilizado.
--   `context/AIContext.tsx`: Não utilizado.
--   `hooks/useAI.ts`: Não utilizado.
--   `components/AIChatModal.tsx`: Não utilizado.
+-   `data/content.tsx`
+-   `data/users.ts`
+-   `context/AdminContext.tsx`
+-   `hooks/useAdmin.ts`
+-   `components/LoginModal.tsx`
+-   `context/AIContext.tsx`
+-   `hooks/useAI.ts`
+-   `components/AIChatModal.tsx`
