@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Page } from '../types';
 import { useContent } from '../hooks/useContent';
 import { useAuth } from '../hooks/useAuth';
 import { ChevronDownIcon, Cog6ToothIcon, PencilIcon, TrashIcon, PlusCircleIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { getIconComponent } from '../utils/iconMap';
+import EditPageModal from './EditPageModal';
 
 interface SidebarProps {
   isOpen: boolean;
-  searchTerm: string;
 }
 
 const Logo = () => {
@@ -32,33 +32,24 @@ const Logo = () => {
 };
 
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, searchTerm }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
   const { pages, addPage } = useContent();
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
-
-  const filterPages = (pages: Page[], term: string): Page[] => {
-    if (!term) return pages;
-    const lowercasedTerm = term.toLowerCase();
-
-    return pages.reduce((acc, page) => {
-      const childrenMatch = page.children ? filterPages(page.children, term) : [];
-      
-      if (page.title.toLowerCase().includes(lowercasedTerm) || childrenMatch.length > 0) {
-        acc.push({ ...page, children: childrenMatch });
-      }
-      return acc;
-    }, [] as Page[]);
-  };
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [parentPagePath, setParentPagePath] = useState<string[] | null>(null);
 
   const handleAddTopLevelPage = () => {
-    const title = window.prompt('Digite o título da nova página:');
-    if (title) {
-        addPage(null, title);
-    }
+    setModalMode('add');
+    setParentPagePath(null);
+    setIsModalOpen(true);
   }
-
-  const filteredPages = filterPages(pages, searchTerm);
+  
+  const handleSavePage = (title: string, icon: string) => {
+      addPage(parentPagePath, title, icon);
+      setIsModalOpen(false);
+  }
 
   return (
     <div
@@ -68,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, searchTerm }) => {
     >
       <Logo />
       <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-        {filteredPages.map((page) => (
+        {pages.map((page) => (
           <SidebarItem key={page.id} page={page} level={0} path={[page.id]} />
         ))}
         {isAdmin && (
@@ -91,6 +82,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, searchTerm }) => {
            </>
         )}
       </nav>
+      {isModalOpen && (
+          <EditPageModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleSavePage}
+            mode="add"
+          />
+      )}
     </div>
   );
 };
@@ -106,9 +105,10 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
-  const { updatePageTitle, deletePage, addPage } = useContent();
-  const initialOpenState = location.pathname.split('/')[2] === page.id;
+  const { updatePageDetails, deletePage, addPage } = useContent();
+  const initialOpenState = location.pathname.startsWith(`/page/${path.join('/')}`);
   const [isOpen, setIsOpen] = useState(initialOpenState);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const hasChildren = page.children && page.children.length > 0;
   
@@ -122,10 +122,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    const newTitle = window.prompt('Digite o novo título:', page.title);
-    if (newTitle) {
-      updatePageTitle(path, newTitle);
-    }
+    setIsModalOpen(true);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -140,14 +137,26 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
   const handleAddSubPage = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    // This now needs to open the modal in 'add' mode for a subpage
+    // We'll handle this by passing props up, or using a shared context for the modal
+    // For simplicity, let's use prompt for this specific case for now, and modal for top-level
     const title = window.prompt(`Digite o título da nova sub-página para "${page.title}":`);
     if (title) {
-        addPage(page.id, title);
-        setIsOpen(true);
+        // A new modal system would be better here, but this fixes the logic
+        addPage(path, title, 'TagIcon'); // Default icon
+        if (!isOpen) {
+            setIsOpen(true);
+        }
     }
   }
 
+  const handleSavePageDetails = (newTitle: string, newIcon: string) => {
+      updatePageDetails(path, newTitle, newIcon);
+      setIsModalOpen(false);
+  }
+
   const navLinkPath = page.content ? `/page/${path.join('/')}` : (page.id === 'home' ? '/' : `/${page.id}`);
+  const IconComponent = getIconComponent(page.icon);
 
   return (
     <div>
@@ -162,7 +171,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
         style={{ paddingLeft: `${1 + level * 1.5}rem` }}
       >
         <div className="flex items-center overflow-hidden">
-            {page.icon && page.icon({className: "h-5 w-5 mr-3 flex-shrink-0"})}
+            <IconComponent className="h-5 w-5 mr-3 flex-shrink-0" />
             <span className="truncate">{page.title}</span>
         </div>
         <div className="flex items-center flex-shrink-0">
@@ -184,6 +193,15 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
             <SidebarItem key={child.id} page={child} level={level + 1} path={path.concat(child.id)} />
           ))}
         </div>
+      )}
+       {isModalOpen && (
+          <EditPageModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleSavePageDetails}
+            mode="edit"
+            currentPage={page}
+          />
       )}
     </div>
   );

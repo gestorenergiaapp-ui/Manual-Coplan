@@ -19,7 +19,7 @@ export interface ContentBlock {
 export interface Page {
   id: string;
   title: string;
-  icon: (props: React.ComponentProps<'svg'>) => React.ReactNode;
+  icon: string; // Changed from function to string
   content?: ContentBlock[];
   children?: Page[];
 }
@@ -47,7 +47,11 @@ export interface User {
 export type StoredUser = User & { password: string };
 
 
-export interface AIMessage {
-  role: 'user' | 'model';
-  text: string;
+export interface SearchResult {
+  type: 'Page' | 'FAQ';
+  id: string;
+  title: string;
+  path: string[];
+  pathTitles: string[];
+  snippet: string; // HTML string with <mark> tags for highlighting
 }

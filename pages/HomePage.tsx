@@ -1,39 +1,74 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useContent } from '../hooks/useContent';
+import { useAuth } from '../hooks/useAuth';
+import ContentBlockRenderer from '../components/ContentBlockRenderer';
+import { Page, ContentBlock, ContentType } from '../types';
+
+const AddBlock: React.FC<{onAdd: (type: ContentType) => void}> = ({ onAdd }) => {
+    const btnClass = "px-3 py-2 border border-brand-secondary text-brand-secondary rounded-lg text-sm font-medium transition-colors hover:bg-brand-secondary hover:text-white";
+    return (
+        <div className="mt-8 pt-6 border-t-2 border-dashed border-gray-200">
+            <h3 className="text-lg font-semibold text-center text-gray-600 mb-4">Adicionar Novo Bloco de Conteúdo</h3>
+            <div className="flex flex-wrap justify-center gap-2">
+                <button onClick={() => onAdd(ContentType.H1)} className={btnClass}>Título 1</button>
+                <button onClick={() => onAdd(ContentType.H2)} className={btnClass}>Título 2</button>
+                <button onClick={() => onAdd(ContentType.P)} className={btnClass}>Parágrafo</button>
+                <button onClick={() => onAdd(ContentType.UL)} className={btnClass}>Lista</button>
+                <button onClick={() => onAdd(ContentType.OL)} className={btnClass}>Lista Numerada</button>
+                <button onClick={() => onAdd(ContentType.IMAGE)} className={btnClass}>Imagem</button>
+                <button onClick={() => onAdd(ContentType.ALERT_INFO)} className={btnClass}>Alerta (Info)</button>
+                <button onClick={() => onAdd(ContentType.ALERT_WARNING)} className={btnClass}>Alerta (Aviso)</button>
+            </div>
+        </div>
+    )
+}
 
 const HomePage: React.FC = () => {
-    const { pages } = useContent();
-    const quickLinks = [
-        pages.find(p => p.id === 'diretrizes')?.children?.[0], // Etica
-        pages.find(p => p.id === 'faturamento')?.children?.[0], // Pedido Venda
-        pages.find(p => p.id === 'faq')
-    ].filter(Boolean);
+    const { pages, updatePageContent, addContentBlock, moveContentBlock } = useContent();
+    const { currentUser } = useAuth();
+    const isAdmin = currentUser?.role === 'admin';
+
+    const page = pages.find(p => p.id === 'home');
+    const path = ['home'];
+
+    const handleUpdateBlock = (blockId: string, newContent: string | string[]) => {
+      if (!page || !page.content) return;
+      const newBlocks = page.content.map(b => 
+          b.id === blockId ? { ...b, content: newContent } : b
+      );
+      updatePageContent(path, newBlocks);
+    };
+  
+    const handleDeleteBlock = (blockId: string) => {
+        if (!page || !page.content || !window.confirm('Tem certeza que deseja excluir este bloco?')) return;
+        const newBlocks = page.content.filter(b => b.id !== blockId);
+        updatePageContent(path, newBlocks);
+    }
+    
+    const handleMoveBlock = (blockId: string, direction: 'up' | 'down') => {
+        moveContentBlock(path, blockId, direction);
+    }
+
+    const handleAddBlock = (type: ContentType) => {
+        addContentBlock(path, type);
+    }
+
+    if (!page) {
+        return <div>Carregando página inicial...</div>;
+    }
 
     return (
-        <div className="animate-fade-in text-center p-8 bg-white rounded-lg shadow-lg">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-brand-primary mb-4">Bem-vindo ao Manual de Diretrizes</h1>
-            <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-                Seu guia central para todos os processos e procedimentos da empresa. Utilize o menu lateral para navegar ou a busca para encontrar o que precisa.
-            </p>
-            <div className="border-t pt-8">
-                 <h2 className="text-2xl font-bold text-brand-secondary mb-6">Acesso Rápido</h2>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {quickLinks.map(page => page && (
-                         <Link 
-                            key={page.id} 
-                            to={page.children ? `/page/${pages.find(p => p.children?.some(c => c.id === page.id))?.id}/${page.id}` : `/${page.id}`} 
-                            className="block p-6 bg-brand-light hover:bg-brand-accent/20 rounded-lg shadow-md transition-all duration-300 transform hover:-translate-y-1"
-                        >
-                            <div className="flex items-center justify-center mb-3">
-                                {page.icon && page.icon({className: "h-10 w-10 text-brand-accent"})}
-                            </div>
-                            <h3 className="text-xl font-semibold text-brand-primary">{page.title}</h3>
-                        </Link>
-                    ))}
-                 </div>
-            </div>
+        <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-lg shadow-lg max-w-4xl mx-auto animate-fade-in">
+            {page.content && page.content.map((block) => (
+                <ContentBlockRenderer 
+                    key={block.id} 
+                    block={block} 
+                    onUpdate={(newContent) => handleUpdateBlock(block.id, newContent)}
+                    onDelete={() => handleDeleteBlock(block.id)}
+                    onMove={(direction) => handleMoveBlock(block.id, direction)}
+                />
+            ))}
+            {isAdmin && <AddBlock onAdd={handleAddBlock} />}
         </div>
     );
 };

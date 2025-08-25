@@ -2,10 +2,8 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useContent } from '../hooks/useContent';
 import { useAuth } from '../hooks/useAuth';
-import { useAI } from '../hooks/useAI';
 import { Page, ContentBlock, ContentType } from '../types';
 import ContentBlockRenderer from '../components/ContentBlockRenderer';
-import { SparklesIcon } from '@heroicons/react/24/solid';
 
 const findPage = (pages: Page[], path: string[]): Page | null => {
     let currentPageLevel: Page[] | undefined = pages;
@@ -42,42 +40,10 @@ const AddBlock: React.FC<{onAdd: (type: ContentType) => void}> = ({ onAdd }) => 
     )
 }
 
-const extractTextFromPage = (page: Page): string => {
-    if (!page.content) return page.title;
-
-    const contentText = page.content.map(block => {
-        if (typeof block.content === 'string') {
-            if (block.type === ContentType.H1 || block.type === ContentType.H2) {
-                return `## ${block.content}`;
-            }
-            return block.content;
-        }
-        if (Array.isArray(block.content)) {
-            return block.content.map(item => `- ${item}`).join('\n');
-        }
-        return '';
-    }).join('\n\n');
-    
-    return `# ${page.title}\n\n${contentText}`;
-}
-
-const generateSitemap = (pages: Page[], level = 0): string => {
-    let sitemap = '';
-    const indent = '  '.repeat(level);
-    pages.forEach(page => {
-        sitemap += `${indent}- ${page.title} (ID: ${page.id})\n`;
-        if (page.children) {
-            sitemap += generateSitemap(page.children, level + 1);
-        }
-    });
-    return sitemap;
-};
-
 const ContentPage: React.FC = () => {
   const { pageId, subPageId } = useParams<{ pageId: string; subPageId?: string }>();
   const { pages, updatePageContent, addContentBlock, moveContentBlock } = useContent();
   const { currentUser } = useAuth();
-  const { openAIChat } = useAI();
   const isAdmin = currentUser?.role === 'admin';
 
   const path = [pageId, subPageId].filter(Boolean) as string[];
@@ -104,15 +70,6 @@ const ContentPage: React.FC = () => {
   const handleAddBlock = (type: ContentType) => {
       addContentBlock(path, type);
   }
-  
-  const handleOpenAIChat = () => {
-    if (page) {
-        const pageContext = extractTextFromPage(page);
-        const sitemap = generateSitemap(pages);
-        openAIChat(pageContext, sitemap);
-    }
-  }
-
 
   if (!page) {
     return (
@@ -149,13 +106,6 @@ const ContentPage: React.FC = () => {
 
             {isAdmin && <AddBlock onAdd={handleAddBlock} />}
         </div>
-        <button
-            onClick={handleOpenAIChat}
-            className="fixed bottom-6 right-6 bg-brand-secondary text-white p-4 rounded-full shadow-lg hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-accent"
-            title="Perguntar ao Assistente de IA"
-        >
-            <SparklesIcon className="h-6 w-6" />
-        </button>
     </>
   );
 };

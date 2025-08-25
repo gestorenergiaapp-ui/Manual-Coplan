@@ -1,8 +1,7 @@
-
-import { Page, FaqItem, StoredUser, ContentBlock, ContentType } from '../types';
-import { INITIAL_PAGES, INITIAL_FAQS } from '../data/content';
+import { Page, FaqItem, StoredUser, ContentBlock, ContentType, SearchResult } from '../types';
+import { INITIAL_PAGES } from '../data/content';
+import { INITIAL_FAQS } from '../data/content';
 import { DUMMY_USERS } from '../data/users';
-import { DocumentTextIcon } from '@heroicons/react/24/outline';
 
 // --- STORAGE KEYS ---
 const DB_INITIALIZED_KEY = 'db_initialized';
@@ -13,7 +12,7 @@ const DB_LOGO_KEY = 'db_logo';
 const DB_CURRENT_USER_KEY = 'db_current_user';
 
 // --- ASYNC SIMULATION ---
-const asyncDelay = (ms: number = 300) => new Promise(res => setTimeout(res, ms));
+const asyncDelay = (ms: number = 100) => new Promise(res => setTimeout(res, ms));
 
 // --- HELPERS ---
 const getFromStorage = <T>(key: string, defaultValue: T): T => {
@@ -42,9 +41,7 @@ const findAndUpdatePage = (pages: Page[], path: string[], action: (page: Page) =
         return action(p);
       }
       if (p.children) {
-        // Re-assign icon function after JSON stringify/parse
-        const pageWithIcon = {...p, icon: INITIAL_PAGES.find(ip => ip.id === p.id)?.icon || p.icon};
-        return { ...pageWithIcon, children: findAndUpdatePage(p.children, path.slice(1), action) };
+        return { ...p, children: findAndUpdatePage(p.children, path.slice(1), action) };
       }
     }
     return p;
@@ -63,30 +60,6 @@ const findAndDeletePage = (pages: Page[], path: string[]): Page[] => {
         return p;
     });
 }
-
-const restorePageIcons = (pages: Page[]): Page[] => {
-    const originalPagesMap = new Map<string, Page>();
-    const flattenPages = (pageList: Page[]) => {
-        pageList.forEach(p => {
-            originalPagesMap.set(p.id, p);
-            if (p.children) flattenPages(p.children);
-        });
-    };
-    flattenPages(INITIAL_PAGES);
-
-    const restoreIconsRecursively = (pageList: Page[]): Page[] => {
-        return pageList.map(p => {
-            const originalPage = originalPagesMap.get(p.id);
-            const restoredPage = { ...p, icon: originalPage?.icon || DocumentTextIcon };
-            if (p.children) {
-                restoredPage.children = restoreIconsRecursively(p.children);
-            }
-            return restoredPage;
-        });
-    };
-    return restoreIconsRecursively(pages);
-};
-
 
 // --- API FUNCTIONS ---
 
@@ -109,8 +82,7 @@ export const initializeDatabase = () => {
 
 export const getPages = async (): Promise<Page[]> => {
     await asyncDelay();
-    const pagesFromDb = getFromStorage<Page[]>(DB_PAGES_KEY, []);
-    return restorePageIcons(pagesFromDb);
+    return getFromStorage<Page[]>(DB_PAGES_KEY, []);
 };
 
 export const getFaqs = async (): Promise<FaqItem[]> => {
@@ -128,58 +100,63 @@ export const updateLogo = async (url: string | null): Promise<void> => {
     setInStorage(DB_LOGO_KEY, url);
 };
 
-export const updatePageContent = async (path: string[], newContent: ContentBlock[]): Promise<void> => {
+export const updatePageContent = async (path: string[], newContent: ContentBlock[]): Promise<Page[]> => {
     await asyncDelay();
     const currentPages = await getPages();
     const action = (page: Page): Page => ({ ...page, content: newContent });
     const updatedPages = findAndUpdatePage(currentPages, path, action);
     setInStorage(DB_PAGES_KEY, updatedPages);
+    return updatedPages;
 };
 
-export const addPage = async (parentId: string | null, title: string): Promise<void> => {
+export const addPage = async (parentPath: string[] | null, title: string, icon: string): Promise<Page[]> => {
     await asyncDelay();
     const currentPages = await getPages();
     const newPage: Page = {
-        id: title.toLowerCase().replace(/\s+/g, '-') + `_${new Date().getTime()}`,
+        id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + `_${new Date().getTime()}`,
         title,
-        icon: DocumentTextIcon, // Placeholder icon
+        icon,
         content: [
             { id: `c_${new Date().getTime()}`, type: ContentType.H1, content: title },
             { id: `c_${new Date().getTime()+1}`, type: ContentType.P, content: 'Adicione seu conteúdo aqui.' }
         ]
     };
 
-    if (parentId === null) {
+    let updatedPages;
+    if (parentPath === null) {
         const specialPagesIds = ['faq', 'contato'];
         const regularPages = currentPages.filter(p => !specialPagesIds.includes(p.id));
         const specialPages = currentPages.filter(p => specialPagesIds.includes(p.id));
-        setInStorage(DB_PAGES_KEY, [...regularPages, newPage, ...specialPages]);
+        updatedPages = [...regularPages, newPage, ...specialPages];
     } else {
         const action = (page: Page): Page => ({
             ...page,
             children: [...(page.children || []), newPage],
         });
-        const updatedPages = findAndUpdatePage(currentPages, [parentId], action);
-        setInStorage(DB_PAGES_KEY, updatedPages);
+        updatedPages = findAndUpdatePage(currentPages, parentPath, action);
     }
+    setInStorage(DB_PAGES_KEY, updatedPages);
+    return updatedPages;
 };
 
-export const updatePageTitle = async (path: string[], newTitle: string): Promise<void> => {
+export const updatePageDetails = async (path: string[], newTitle: string, newIcon: string): Promise<Page[]> => {
     await asyncDelay();
     const currentPages = await getPages();
-    const action = (page: Page): Page => ({ ...page, title: newTitle });
+    const action = (page: Page): Page => ({ ...page, title: newTitle, icon: newIcon });
     const updatedPages = findAndUpdatePage(currentPages, path, action);
     setInStorage(DB_PAGES_KEY, updatedPages);
+    return updatedPages;
 }
 
-export const deletePage = async (path: string[]): Promise<void> => {
+export const deletePage = async (path: string[]): Promise<Page[]> => {
     await asyncDelay();
     const currentPages = await getPages();
     const updatedPages = findAndDeletePage(currentPages, path);
     setInStorage(DB_PAGES_KEY, updatedPages);
+    return updatedPages;
 }
 
-export const addContentBlock = async (path: string[], blockType: ContentType): Promise<void> => {
+export const addContentBlock = async (path: string[], blockType: ContentType): Promise<Page[]> => {
     await asyncDelay();
     const currentPages = await getPages();
     const newBlock: ContentBlock = {
@@ -200,9 +177,10 @@ export const addContentBlock = async (path: string[], blockType: ContentType): P
     const action = (page: Page): Page => ({ ...page, content: [...(page.content || []), newBlock] });
     const updatedPages = findAndUpdatePage(currentPages, path, action);
     setInStorage(DB_PAGES_KEY, updatedPages);
+    return updatedPages;
 }
 
-export const moveContentBlock = async (path: string[], blockId: string, direction: 'up' | 'down'): Promise<void> => {
+export const moveContentBlock = async (path: string[], blockId: string, direction: 'up' | 'down'): Promise<Page[]> => {
     await asyncDelay();
     const currentPages = await getPages();
     const action = (page: Page): Page => {
@@ -218,26 +196,32 @@ export const moveContentBlock = async (path: string[], blockId: string, directio
     }
     const updatedPages = findAndUpdatePage(currentPages, path, action);
     setInStorage(DB_PAGES_KEY, updatedPages);
+    return updatedPages;
 }
 
-export const addFaq = async (faq: Omit<FaqItem, 'id'>): Promise<void> => {
+export const addFaq = async (faq: Omit<FaqItem, 'id'>): Promise<FaqItem[]> => {
     await asyncDelay();
     const faqs = await getFaqs();
     const newFaq = { ...faq, id: `faq_${new Date().getTime()}` };
-    setInStorage(DB_FAQS_KEY, [...faqs, newFaq]);
+    const updatedFaqs = [...faqs, newFaq];
+    setInStorage(DB_FAQS_KEY, updatedFaqs);
+    return updatedFaqs;
 };
 
-export const deleteFaq = async (faqId: string): Promise<void> => {
+export const deleteFaq = async (faqId: string): Promise<FaqItem[]> => {
     await asyncDelay();
     const faqs = await getFaqs();
-    setInStorage(DB_FAQS_KEY, faqs.filter(f => f.id !== faqId));
+    const updatedFaqs = faqs.filter(f => f.id !== faqId);
+    setInStorage(DB_FAQS_KEY, updatedFaqs);
+    return updatedFaqs;
 };
 
-export const updateFaq = async (faqId: string, data: { question: string, answer: string }): Promise<void> => {
+export const updateFaq = async (faqId: string, data: { question: string, answer: string }): Promise<FaqItem[]> => {
     await asyncDelay();
     const faqs = await getFaqs();
     const updatedFaqs = faqs.map(f => f.id === faqId ? { ...f, ...data } : f);
     setInStorage(DB_FAQS_KEY, updatedFaqs);
+    return updatedFaqs;
 };
 
 // --- AUTH API ---
@@ -297,4 +281,106 @@ export const changePassword = async (username: string, oldPass: string, newPass:
         return true;
     }
     return false;
+};
+
+// --- SEARCH API ---
+
+const createSnippet = (text: string, term: string, regex: RegExp): string => {
+    const index = text.toLowerCase().indexOf(term);
+    if (index === -1) return '';
+
+    const start = Math.max(0, index - 50);
+    const end = Math.min(text.length, index + term.length + 50);
+    let snippet = text.substring(start, end);
+    
+    if (start > 0) snippet = '...' + snippet;
+    if (end < text.length) snippet = snippet + '...';
+    
+    return snippet.replace(regex, '<mark class="bg-yellow-200">$&</mark>');
+}
+
+export const searchContent = async (query: string): Promise<SearchResult[]> => {
+    await asyncDelay(200);
+    if (!query) return [];
+    
+    const results: SearchResult[] = [];
+    const term = query.toLowerCase();
+    const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+
+    const pages = await getPages();
+    const faqs = await getFaqs();
+
+    // Search Pages
+    const searchInPages = (pageList: Page[], currentPath: string[], currentPathTitles: string[]) => {
+        for (const page of pageList) {
+            const newPath = [...currentPath, page.id];
+            const newPathTitles = [...currentPathTitles, page.title];
+
+            // Match in Title
+            if (page.title.toLowerCase().includes(term)) {
+                results.push({
+                    type: 'Page',
+                    id: page.id,
+                    title: page.title.replace(regex, '<mark class="bg-yellow-200">$&</mark>'),
+                    path: newPath,
+                    pathTitles: newPathTitles,
+                    snippet: 'Correspondência encontrada no título da página.'
+                });
+            }
+
+            // Match in Content
+            if (page.content) {
+                for (const block of page.content) {
+                    const contentString = Array.isArray(block.content) ? block.content.join(' ') : block.content;
+                    if (contentString && contentString.toLowerCase().includes(term)) {
+                        // Avoid duplicate page results if title already matched
+                        if (!results.some(r => r.type === 'Page' && r.id === page.id)) {
+                             results.push({
+                                type: 'Page',
+                                id: page.id,
+                                title: page.title,
+                                path: newPath,
+                                pathTitles: newPathTitles,
+                                snippet: createSnippet(contentString, term, regex)
+                            });
+                        }
+                    }
+                }
+            }
+
+            if (page.children) {
+                searchInPages(page.children, newPath, newPathTitles);
+            }
+        }
+    };
+    searchInPages(pages, [], []);
+
+    // Search FAQs
+    for (const faq of faqs) {
+        let snippet = '';
+        let title = faq.question;
+        let matched = false;
+
+        if (faq.question.toLowerCase().includes(term)) {
+            title = faq.question.replace(regex, '<mark class="bg-yellow-200">$&</mark>');
+            snippet = createSnippet(faq.answer, term, regex) || 'Correspondência encontrada na pergunta.';
+            matched = true;
+        } else if (faq.answer.toLowerCase().includes(term)) {
+            snippet = createSnippet(faq.answer, term, regex);
+            matched = true;
+        }
+
+        if (matched) {
+             results.push({
+                type: 'FAQ',
+                id: faq.id,
+                title,
+                path: ['faq'],
+                pathTitles: ['FAQ'],
+                snippet
+            });
+        }
+    }
+    
+    return results;
 };

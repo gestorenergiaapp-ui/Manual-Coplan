@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { Page, FaqItem, Suggestion, ContentBlock, ContentType } from '../types';
 import * as api from '../services/api';
@@ -13,8 +12,8 @@ interface ContentContextType {
   updatePageContent: (path: string[], newContent: ContentBlock[]) => Promise<void>;
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'timestamp'>) => void;
   updateFaq: (faqId: string, question: string, answer: string) => Promise<void>;
-  addPage: (parentId: string | null, title: string) => Promise<void>;
-  updatePageTitle: (path: string[], newTitle: string) => Promise<void>;
+  addPage: (parentPath: string[] | null, title: string, icon: string) => Promise<void>;
+  updatePageDetails: (path: string[], newTitle: string, newIcon: string) => Promise<void>;
   deletePage: (path: string[]) => Promise<void>;
   addContentBlock: (path: string[], blockType: ContentType) => Promise<void>;
   moveContentBlock: (path: string[], blockId: string, direction: 'up' | 'down') => Promise<void>;
@@ -31,44 +30,43 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    try {
-        const [pagesData, faqsData, logoData] = await Promise.all([
-            api.getPages(),
-            api.getFaqs(),
-            api.getLogo()
-        ]);
-        setPages(pagesData);
-        setFaqs(faqsData);
-        setLogoUrl(logoData);
-    } catch (error) {
-        console.error("Failed to fetch initial content data:", error);
-    } finally {
-        setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+          const [pagesData, faqsData, logoData] = await Promise.all([
+              api.getPages(),
+              api.getFaqs(),
+              api.getLogo()
+          ]);
+          setPages(pagesData);
+          setFaqs(faqsData);
+          setLogoUrl(logoData);
+      } catch (error) {
+          console.error("Failed to fetch initial content data:", error);
+      } finally {
+          setLoading(false);
+      }
+    };
     fetchData();
-  }, [fetchData]);
+  }, []);
 
   const updateLogo = useCallback(async (url: string | null) => {
     await api.updateLogo(url);
-    await fetchData();
-  }, [fetchData]);
+    setLogoUrl(url);
+  }, []);
 
   const updatePageContent = useCallback(async (path: string[], newContent: ContentBlock[]) => {
-    await api.updatePageContent(path, newContent);
-    await fetchData();
-  }, [fetchData]);
+    const updatedPages = await api.updatePageContent(path, newContent);
+    setPages(updatedPages);
+  }, []);
 
   const updateFaq = useCallback(async (faqId: string, question: string, answer: string) => {
-    await api.updateFaq(faqId, { question, answer });
-    await fetchData();
-  }, [fetchData]);
+    const updatedFaqs = await api.updateFaq(faqId, { question, answer });
+    setFaqs(updatedFaqs);
+  }, []);
 
   const addSuggestion = useCallback((suggestion: Omit<Suggestion, 'id' | 'timestamp'>) => {
-    // Suggestions remain session-based and don't need to be persisted in this version
+    // Suggestions remain session-based
     const newSuggestion: Suggestion = {
       ...suggestion,
       id: `sug_${new Date().getTime()}`,
@@ -77,46 +75,46 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     setSuggestions(prev => [newSuggestion, ...prev]);
   }, []);
 
-  const addPage = useCallback(async (parentId: string | null, title: string) => {
-    await api.addPage(parentId, title);
-    await fetchData();
-  }, [fetchData]);
+  const addPage = useCallback(async (parentPath: string[] | null, title: string, icon: string) => {
+    const updatedPages = await api.addPage(parentPath, title, icon);
+    setPages(updatedPages);
+  }, []);
   
-  const updatePageTitle = useCallback(async (path: string[], newTitle: string) => {
-    await api.updatePageTitle(path, newTitle);
-    await fetchData();
-  }, [fetchData]);
+  const updatePageDetails = useCallback(async (path: string[], newTitle: string, newIcon: string) => {
+    const updatedPages = await api.updatePageDetails(path, newTitle, newIcon);
+    setPages(updatedPages);
+  }, []);
 
   const deletePage = useCallback(async (path: string[]) => {
-      await api.deletePage(path);
-      await fetchData();
-  }, [fetchData]);
+      const updatedPages = await api.deletePage(path);
+      setPages(updatedPages);
+  }, []);
 
   const addContentBlock = useCallback(async (path: string[], blockType: ContentType) => {
-      await api.addContentBlock(path, blockType);
-      await fetchData();
-  }, [fetchData]);
+      const updatedPages = await api.addContentBlock(path, blockType);
+      setPages(updatedPages);
+  }, []);
 
   const moveContentBlock = useCallback(async (path: string[], blockId: string, direction: 'up' | 'down') => {
-      await api.moveContentBlock(path, blockId, direction);
-      await fetchData();
-  }, [fetchData]);
+      const updatedPages = await api.moveContentBlock(path, blockId, direction);
+      setPages(updatedPages);
+  }, []);
 
   const addFaq = useCallback(async (faq: Omit<FaqItem, 'id'>) => {
-    await api.addFaq(faq);
-    await fetchData();
-  }, [fetchData]);
+    const updatedFaqs = await api.addFaq(faq);
+    setFaqs(updatedFaqs);
+  }, []);
 
   const deleteFaq = useCallback(async (faqId: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta pergunta?')) {
-        await api.deleteFaq(faqId);
-        await fetchData();
+        const updatedFaqs = await api.deleteFaq(faqId);
+        setFaqs(updatedFaqs);
     }
-  }, [fetchData]);
+  }, []);
 
 
   return (
-    <ContentContext.Provider value={{ pages, faqs, suggestions, logoUrl, loading, updateLogo, updatePageContent, addSuggestion, updateFaq, addPage, updatePageTitle, deletePage, addContentBlock, moveContentBlock, addFaq, deleteFaq }}>
+    <ContentContext.Provider value={{ pages, faqs, suggestions, logoUrl, loading, updateLogo, updatePageContent, addSuggestion, updateFaq, addPage, updatePageDetails, deletePage, addContentBlock, moveContentBlock, addFaq, deleteFaq }}>
       {children}
     </ContentContext.Provider>
   );

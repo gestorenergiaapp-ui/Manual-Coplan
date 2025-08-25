@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import AIChatModal from './AIChatModal';
 import { useContent } from '../hooks/useContent';
 import { useAuth } from '../hooks/useAuth';
 
@@ -16,7 +15,6 @@ const LoadingSpinner = () => (
 
 const MainLayout: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const { loading: contentLoading } = useContent();
   const { loading: authLoading } = useAuth();
 
@@ -31,18 +29,15 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-brand-light">
-      <Sidebar isOpen={isSidebarOpen} searchTerm={searchTerm} />
+      <Sidebar isOpen={isSidebarOpen} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
           onToggleSidebar={handleToggleSidebar}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-brand-light p-4 sm:p-6 relative">
           <Outlet />
         </main>
       </div>
-      <AIChatModal />
     </div>
   );
 };

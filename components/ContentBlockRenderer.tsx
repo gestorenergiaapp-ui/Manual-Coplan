@@ -1,8 +1,38 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { ContentBlock, ContentType } from '../types';
 import { PencilIcon, CheckIcon, XMarkIcon, ArrowUpIcon, ArrowDownIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/solid';
+import { marked } from 'marked';
+import { Link } from 'react-router-dom';
+
+// Custom renderer for links to use React Router's Link component
+class CustomRenderer extends marked.Renderer {
+  override link({ href, title, text }: marked.Tokens.Link): string | false {
+    // In modern 'marked', the 'href' in a link token is typed as a string.
+    // If for some reason it's not a valid link, we can return false
+    // to let marked use its default rendering.
+    if (!href) {
+      return false;
+    }
+
+    // Check for internal links (start with /)
+    if (href.startsWith('/')) {
+      // Use hash-based routing for SPA navigation
+      return `<a href="#${href}" title="${title || ''}" class="text-brand-secondary hover:underline font-semibold">${text}</a>`;
+    }
+  
+    // External links open in a new tab
+    return `<a href="${href}" title="${title || ''}" target="_blank" rel="noopener noreferrer" class="text-brand-secondary hover:underline font-semibold">${text}</a>`;
+  }
+}
+const renderer = new CustomRenderer();
+
+marked.setOptions({
+  renderer,
+  gfm: true,
+  breaks: true,
+});
+
 
 interface ContentBlockRendererProps {
   block: ContentBlock;
@@ -101,7 +131,9 @@ const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ block, onUp
       case ContentType.H2:
         return isEditing ? renderEditable(editValue as string, 'input') : <h2 className="text-2xl font-semibold text-brand-dark mt-6 mb-4">{block.content}</h2>;
       case ContentType.P:
-        return isEditing ? renderEditable(editValue as string, 'textarea') : <p className="text-gray-700 leading-relaxed mb-4">{block.content}</p>;
+        return isEditing 
+            ? renderEditable(editValue as string, 'textarea') 
+            : <div className="text-gray-700 leading-relaxed mb-4 prose max-w-none" dangerouslySetInnerHTML={{ __html: marked.parse(block.content as string) }} />;
       case ContentType.UL:
         return isEditing ? renderListEditable(editValue as string[]) : <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4 pl-4">{Array.isArray(block.content) && block.content.map((item, i) => <li key={i}>{item}</li>)}</ul>;
       case ContentType.OL:
