@@ -5,12 +5,10 @@ import * as api from '../services/api';
 interface ContentContextType {
   pages: Page[];
   faqs: FaqItem[];
-  suggestions: Suggestion[];
   logoUrl: string | null;
   loading: boolean;
   updateLogo: (file: File) => Promise<void>;
   updatePageContent: (path: string[], newContent: ContentBlock[]) => Promise<void>;
-  addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'timestamp'>) => void;
   updateFaq: (faqId: string, question: string, answer: string) => Promise<void>;
   addPage: (parentPath: string[] | null, title: string, icon: string) => Promise<void>;
   updatePageDetails: (path: string[], newTitle: string, newIcon: string) => Promise<void>;
@@ -26,7 +24,6 @@ export const ContentContext = createContext<ContentContextType | undefined>(unde
 export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [pages, setPages] = useState<Page[]>([]);
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -100,19 +97,8 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     return Promise.resolve();
   }, [updateFaqsState]);
 
-  const addSuggestion = useCallback((suggestion: Omit<Suggestion, 'id' | 'timestamp'>) => {
-    // This can remain a frontend-only state for now, as it's not persisted.
-    const newSuggestion: Suggestion = {
-      ...suggestion,
-      id: `sug_${new Date().getTime()}`,
-      timestamp: new Date().toISOString(),
-    };
-    setSuggestions(prev => [newSuggestion, ...prev]);
-  }, []);
-
-
   return (
-    <ContentContext.Provider value={{ pages, faqs, suggestions, logoUrl, loading, updateLogo, updatePageContent, addSuggestion, updateFaq, addPage, updatePageDetails, deletePage, addContentBlock, moveContentBlock, addFaq, deleteFaq }}>
+    <ContentContext.Provider value={{ pages, faqs, logoUrl, loading, updateLogo, updatePageContent, updateFaq, addPage, updatePageDetails, deletePage, addContentBlock, moveContentBlock, addFaq, deleteFaq }}>
       {children}
     </ContentContext.Provider>
   );

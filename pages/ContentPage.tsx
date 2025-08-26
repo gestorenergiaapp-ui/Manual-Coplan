@@ -41,12 +41,12 @@ const AddBlock: React.FC<{onAdd: (type: ContentType) => void}> = ({ onAdd }) => 
 }
 
 const ContentPage: React.FC = () => {
-  const { pageId, subPageId } = useParams<{ pageId: string; subPageId?: string }>();
+  const { pageId, subPageId, tertiaryPageId } = useParams<{ pageId: string; subPageId?: string, tertiaryPageId?: string }>();
   const { pages, updatePageContent, addContentBlock, moveContentBlock } = useContent();
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
 
-  const path = [pageId, subPageId].filter(Boolean) as string[];
+  const path = [pageId, subPageId, tertiaryPageId].filter(Boolean) as string[];
   const page = findPage(pages, path);
 
   const handleUpdateBlock = (blockId: string, newContent: string | string[]) => {

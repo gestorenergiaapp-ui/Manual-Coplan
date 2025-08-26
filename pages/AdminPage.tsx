@@ -3,12 +3,14 @@ import { useAuth } from '../hooks/useAuth';
 import { useContent } from '../hooks/useContent';
 import { Navigate } from 'react-router-dom';
 import { ArrowUpOnSquareIcon, ShieldCheckIcon, EyeIcon, EyeSlashIcon, PaintBrushIcon, UsersIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { StoredUser } from '../types';
+import { StoredUser, Suggestion } from '../types';
+import * as api from '../services/api';
 
 const AdminPage: React.FC = () => {
     const { currentUser, changePassword, getUsers, addUser, deleteUser } = useAuth();
-    const { suggestions, logoUrl, updateLogo } = useContent();
+    const { logoUrl, updateLogo } = useContent();
     
+    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [logoMessage, setLogoMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
     const [currentPassword, setCurrentPassword] = useState('');
@@ -22,14 +24,21 @@ const AdminPage: React.FC = () => {
     const [newUserPassword, setNewUserPassword] = useState('');
     const [userMessage, setUserMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-    const fetchUsers = async () => {
-        const users = await getUsers();
-        // The API returns users without passwords, so we cast it.
-        setAllUsers(users as StoredUser[]);
+    const fetchAdminData = async () => {
+        try {
+            const [users, fetchedSuggestions] = await Promise.all([
+                getUsers(),
+                api.getSuggestions()
+            ]);
+            setAllUsers(users as StoredUser[]);
+            setSuggestions(fetchedSuggestions);
+        } catch (error) {
+            console.error("Failed to fetch admin data", error);
+        }
     };
 
     useEffect(() => {
-        fetchUsers();
+        fetchAdminData();
     }, [getUsers]);
 
 
@@ -88,13 +97,13 @@ const AdminPage: React.FC = () => {
         if (result.success) {
             setNewUsername('');
             setNewUserPassword('');
-            fetchUsers();
+            fetchAdminData();
         }
     }
 
     const handleDeleteUser = async (username: string) => {
         await deleteUser(username);
-        fetchUsers();
+        fetchAdminData();
     }
 
 

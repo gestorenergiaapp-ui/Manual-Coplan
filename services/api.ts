@@ -1,4 +1,4 @@
-import { Page, FaqItem, StoredUser, ContentBlock, ContentType, SearchResult } from '../types';
+import { Page, FaqItem, StoredUser, ContentBlock, ContentType, SearchResult, Suggestion } from '../types';
 
 // --- API HELPERS ---
 const apiFetch = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
@@ -84,6 +84,14 @@ export const deleteFaq = (faqId: string): Promise<FaqItem[]> => {
 
 export const updateFaq = (faqId: string, data: { question: string, answer: string }): Promise<FaqItem[]> => {
     return apiFetch(`/faq/${faqId}`, { method: 'PUT', body: JSON.stringify(data) });
+};
+
+export const getSuggestions = async (): Promise<Suggestion[]> => {
+    return apiFetch('/suggestions');
+};
+
+export const addSuggestion = async (suggestion: Omit<Suggestion, 'id' | 'timestamp'>): Promise<Suggestion> => {
+    return apiFetch('/suggestions', { method: 'POST', body: JSON.stringify(suggestion) });
 };
 
 

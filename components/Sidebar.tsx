@@ -37,11 +37,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [parentPagePath, setParentPagePath] = useState<string[] | null>(null);
 
   const handleAddTopLevelPage = () => {
-    setModalMode('add');
     setParentPagePath(null);
     setIsModalOpen(true);
   }
@@ -77,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
             </NavLink>
             <button onClick={handleAddTopLevelPage} className="w-full flex items-center p-2 rounded-lg text-sm hover:bg-brand-secondary transition-colors">
                 <PlusCircleIcon className="h-5 w-5 mr-3" />
-                <span>Adicionar Página</span>
+                <span>Adicionar Página Principal</span>
             </button>
            </>
         )}
@@ -108,7 +106,8 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
   const { updatePageDetails, deletePage, addPage } = useContent();
   const initialOpenState = location.pathname.startsWith(`/page/${path.join('/')}`);
   const [isOpen, setIsOpen] = useState(initialOpenState);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
   const hasChildren = page.children && page.children.length > 0;
   
@@ -122,13 +121,13 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setIsModalOpen(true);
+    setIsEditModalOpen(true);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (window.confirm(`Tem certeza que deseja excluir a página "${page.title}"?`)) {
+    if (window.confirm(`Tem certeza que deseja excluir a página "${page.title}"? Isso também excluirá todas as suas sub-páginas.`)) {
       deletePage(path);
       navigate('/');
     }
@@ -137,22 +136,20 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
   const handleAddSubPage = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    // This now needs to open the modal in 'add' mode for a subpage
-    // We'll handle this by passing props up, or using a shared context for the modal
-    // For simplicity, let's use prompt for this specific case for now, and modal for top-level
-    const title = window.prompt(`Digite o título da nova sub-página para "${page.title}":`);
-    if (title) {
-        // A new modal system would be better here, but this fixes the logic
-        addPage(path, title, 'TagIcon'); // Default icon
-        if (!isOpen) {
-            setIsOpen(true);
-        }
-    }
+    setIsAddModalOpen(true);
   }
 
   const handleSavePageDetails = (newTitle: string, newIcon: string) => {
       updatePageDetails(path, newTitle, newIcon);
-      setIsModalOpen(false);
+      setIsEditModalOpen(false);
+  }
+  
+  const handleSaveNewSubPage = (title: string, icon: string) => {
+      addPage(path, title, icon);
+      if (!isOpen) {
+          setIsOpen(true);
+      }
+      setIsAddModalOpen(false);
   }
 
   const navLinkPath = page.content ? `/page/${path.join('/')}` : (page.id === 'home' ? '/' : `/${page.id}`);
@@ -177,10 +174,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
         <div className="flex items-center flex-shrink-0">
           {isAdmin && (
             <div className="hidden group-hover:flex items-center ml-2">
-                {hasChildren && <button onClick={handleAddSubPage} className="p-1 hover:text-white"><PlusIcon className="h-4 w-4" /></button>}
+                {page.id !== 'faq' && page.id !== 'contato' &&
+                    <button onClick={handleAddSubPage} className="p-1 hover:text-white" title="Adicionar sub-página"><PlusIcon className="h-4 w-4" /></button>
+                }
                 {page.id !== 'home' && page.id !== 'faq' && page.id !== 'contato' && <>
-                    <button onClick={handleEdit} className="p-1 hover:text-white"><PencilIcon className="h-4 w-4" /></button>
-                    <button onClick={handleDelete} className="p-1 hover:text-white"><TrashIcon className="h-4 w-4" /></button>
+                    <button onClick={handleEdit} className="p-1 hover:text-white" title="Editar"><PencilIcon className="h-4 w-4" /></button>
+                    <button onClick={handleDelete} className="p-1 hover:text-white" title="Excluir"><TrashIcon className="h-4 w-4" /></button>
                 </>}
             </div>
           )}
@@ -194,13 +193,21 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ page, level, path }) => {
           ))}
         </div>
       )}
-       {isModalOpen && (
+       {isEditModalOpen && (
           <EditPageModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
             onSave={handleSavePageDetails}
             mode="edit"
             currentPage={page}
+          />
+      )}
+      {isAddModalOpen && (
+          <EditPageModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            onSave={handleSaveNewSubPage}
+            mode="add"
           />
       )}
     </div>

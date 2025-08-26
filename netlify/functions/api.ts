@@ -4,7 +4,7 @@ import { Buffer } from "buffer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { Page, FaqItem, StoredUser, ContentBlock, ContentType } from "../../types";
+import { Page, FaqItem, StoredUser, ContentBlock, ContentType, Suggestion } from "../../types";
 
 const { MONGODB_URI, JWT_SECRET } = process.env;
 
@@ -129,6 +129,22 @@ const handler: Handler = async (event, context) => {
             });
         }
 
+        if (event.httpMethod === 'POST' && path === '/suggestions') {
+            const { name, department, message } = body;
+            if (!name || !department || !message) return createResponse(400, { message: 'Missing suggestion data' });
+            
+            const suggestionsCollection = db.collection<Suggestion>('suggestions');
+            const newSuggestion: Suggestion = {
+                id: `sug_${new Date().getTime()}`,
+                name,
+                department,
+                message,
+                timestamp: new Date().toISOString()
+            };
+            await suggestionsCollection.insertOne(newSuggestion);
+            return createResponse(201, newSuggestion);
+        }
+
         if (event.httpMethod === 'GET' && path.startsWith('/media/')) {
             const bucket = new GridFSBucket(db);
             const fileId = new ObjectId(path.split('/')[2]);
@@ -198,6 +214,13 @@ const handler: Handler = async (event, context) => {
         
         const pagesCollection = db.collection<Page>('pages');
         const faqsCollection = db.collection<FaqItem>('faqs');
+
+        // GET SUGGESTIONS (Admin only)
+        if (event.httpMethod === 'GET' && path === '/suggestions') {
+            const suggestionsCollection = db.collection('suggestions');
+            const suggestions = await suggestionsCollection.find({}).sort({ timestamp: -1 }).toArray();
+            return createResponse(200, suggestions);
+        }
         
         // PAGE MUTATIONS
         if (event.httpMethod === 'PATCH' && path === '/page/content') {

@@ -1,22 +1,27 @@
 import React, { useState } from 'react';
-import { useContent } from '../hooks/useContent';
+import * as api from '../services/api';
 
 const ContactPage: React.FC = () => {
-    const { addSuggestion } = useContent();
     const [name, setName] = useState('');
     const [department, setDepartment] = useState('');
     const [message, setMessage] = useState('');
     const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
         if (name && department && message) {
-            addSuggestion({ name, department, message });
-            setName('');
-            setDepartment('');
-            setMessage('');
-            setSubmitted(true);
-            setTimeout(() => setSubmitted(false), 5000);
+            try {
+                await api.addSuggestion({ name, department, message });
+                setName('');
+                setDepartment('');
+                setMessage('');
+                setSubmitted(true);
+                setTimeout(() => setSubmitted(false), 5000);
+            } catch (err) {
+                setError('Houve um erro ao enviar sua mensagem. Tente novamente mais tarde.');
+            }
         }
     };
 
@@ -29,6 +34,13 @@ const ContactPage: React.FC = () => {
                 <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-r-lg" role="alert">
                     <p className="font-bold">Enviado com sucesso!</p>
                     <p>Obrigado pela sua contribuição.</p>
+                </div>
+            )}
+            
+            {error && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg" role="alert">
+                    <p className="font-bold">Falha no Envio</p>
+                    <p>{error}</p>
                 </div>
             )}
 
