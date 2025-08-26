@@ -4,7 +4,7 @@ import { Buffer } from "buffer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { Page, FaqItem, StoredUser, ContentBlock, ContentType, Suggestion } from "../../types";
+import { Page, FaqItem, StoredUser, ContentBlock, ContentType, Suggestion } from "../../src/types";
 
 const { MONGODB_URI, JWT_SECRET } = process.env;
 

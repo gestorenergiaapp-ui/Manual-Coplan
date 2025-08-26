@@ -41,34 +41,60 @@ A aplicação é uma Single Page Application (SPA) construída com React e TypeS
 
 ## Configuração do Netlify (`netlify.toml`)
 
-Para que o ambiente de desenvolvimento local (`netlify dev`) e o deploy funcionem corretamente, é crucial ter um arquivo `netlify.toml` na raiz do projeto. Este arquivo instrui a Netlify sobre como construir o site e, mais importante, como rotear os pedidos.
+Para que o ambiente de desenvolvimento local (`netlify dev`) e o deploy funcionem corretamente, é **essencial** ter um arquivo `netlify.toml` na raiz do projeto. Este arquivo instrui a Netlify sobre como construir o site, como executar o servidor de desenvolvimento local e como rotear os pedidos.
 
-**Copie e cole o conteúdo abaixo no seu arquivo `netlify.toml`:**
+O problema da "tela branca" que você está enfrentando ocorre porque a regra de redirecionamento `/*` para o `index.html` (necessária para o React Router em produção) está interferindo com o servidor de desenvolvimento do Vite, impedindo que ele sirva os arquivos JavaScript corretamente.
+
+A configuração abaixo resolve isso adicionando uma seção `[dev]` que instrui o `netlify dev` a integrar-se corretamente com o Vite, além de manter as regras necessárias para o deploy em produção.
+
+**Substitua o conteúdo do seu `netlify.toml` por este:**
 
 ```toml
-# Configurações de build
+# =============================================================================
+# Netlify Configuration File
+#
+# Este arquivo é crucial para o desenvolvimento local e para o deploy.
+# Ele configura o build, o servidor de desenvolvimento e as regras de
+# redirecionamento da sua aplicação.
+# =============================================================================
+
+# Configurações de build para o deploy em produção
 [build]
-  command = "npm run build"      # Comando para buildar o projeto
+  command = "npm run build"      # Comando para buildar o projeto com Vite
   publish = "dist"               # Diretório de publicação (saída do Vite)
   functions = "netlify/functions"  # Diretório onde as funções serverless estão
 
-# Regra de proxy para a API (deve vir primeiro)
-# Direciona chamadas /api/* para a função serverless, corrigindo erros de comunicação.
+# Configurações para o servidor de desenvolvimento local (netlify dev)
+[dev]
+  command = "vite"          # Comando para iniciar o servidor de desenvolvimento Vite
+  targetPort = 5173         # Porta padrão em que o Vite é executado
+  port = 8888               # Porta em que o `netlify dev` servirá o site
+  publish = "dist"          # Necessário para o `netlify dev` encontrar assets estáticos
+  autoLaunch = true         # Abre o navegador automaticamente
+
+# --- Regras de Redirecionamento ---
+# Estas regras funcionam tanto localmente quanto em produção.
+
+# Regra de proxy para a API
+# Direciona todas as chamadas de /api/* para a sua função 'api'.
+# Isto é o que conserta os erros 404 nas chamadas de backend.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
 
-# Regra de fallback para Single Page Application (SPA)
-# Garante que o roteamento do React funcione ao recarregar a página, corrigindo a "tela branca".
+# Regra de fallback para a Single Page Application (SPA)
+# Garante que o roteamento do React (React Router) funcione ao recarregar a
+# página ou acessar uma URL diretamente, consertando o problema da "página não encontrada".
+# Esta regra é a última a ser processada.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 ```
-- A seção `[build]` define os comandos e diretórios para o processo de build.
-- A primeira regra `[[redirects]]` cria um proxy para a sua API serverless.
-- A segunda regra `[[redirects]]` é o "fallback" que resolve o problema da "tela branca" e garante que o React Router funcione corretamente.
+
+- A seção `[dev]` garante que o `netlify dev` execute o Vite corretamente e saiba como encaminhar as solicitações para ele, resolvendo o problema da tela branca localmente.
+- As regras `[[redirects]]` permanecem, pois são essenciais. A primeira lida com as chamadas de API e a segunda garante que seu aplicativo de página única (SPA) funcione corretamente em produção.
 
 ## Limpeza da Arquitetura
 
