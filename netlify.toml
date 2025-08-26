@@ -1,0 +1,20 @@
+
+# Configurações de build
+[build]
+  command = "npm run build"      # Comando para buildar o projeto
+  publish = "dist"               # Diretório de publicação (saída do Vite)
+  functions = "netlify/functions"  # Diretório onde as funções serverless estão
+
+# Regra de proxy para a API (deve vir primeiro)
+# Direciona chamadas /api/* para a função serverless, corrigindo erros de comunicação.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Regra de fallback para Single Page Application (SPA)
+# Garante que o roteamento do React funcione ao recarregar a página, corrigindo a "tela branca".
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
