@@ -1,0 +1,42 @@
+# =============================================================================
+# Netlify Configuration File
+#
+# Este arquivo é crucial para o desenvolvimento local e para o deploy.
+# Ele configura o build, o servidor de desenvolvimento e as regras de
+# redirecionamento da sua aplicação.
+# =============================================================================
+
+# Configurações de build para o deploy em produção
+[build]
+  command = "npm run build"      # Comando para buildar o projeto com Vite
+  publish = "dist"               # Diretório de publicação (saída do Vite)
+  functions = "netlify/functions"  # Diretório onde as funções serverless estão
+
+# Configurações para o servidor de desenvolvimento local (netlify dev)
+# Isto resolve o problema da "tela branca" ao rodar 'netlify dev'.
+[dev]
+  command = "vite"          # Comando para iniciar o servidor de desenvolvimento Vite
+  targetPort = 5173         # Porta padrão em que o Vite é executado
+  port = 8888               # Porta em que o `netlify dev` servirá o site
+  publish = "dist"          # Necessário para o `netlify dev` encontrar assets estáticos
+  autoLaunch = true         # Abre o navegador automaticamente
+
+# --- Regras de Redirecionamento ---
+# Estas regras funcionam tanto localmente quanto em produção.
+
+# Regra de proxy para a API (deve vir primeiro)
+# Direciona todas as chamadas de /api/* para a sua função 'api'.
+# Isto é o que conserta os erros 404 (Not Found) nas chamadas de backend.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Regra de fallback para a Single Page Application (SPA)
+# Garante que o roteamento do React (React Router) funcione ao recarregar a
+# página ou acessar uma URL diretamente.
+# Esta regra é a última a ser processada.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
